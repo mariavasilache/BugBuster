@@ -2,184 +2,178 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 
+const priorityOrder = { 'High': 2, 'Low': 1 };
+
 const styles = {
-    container: { fontFamily: 'Arial, sans-serif', background: '#f4f7f6', minHeight: '100vh', padding: '20px', color: '#333' },
-    header: { textAlign: 'center', marginBottom: '30px', color: '#222' },
-    btnInit: { background: '#7f8c8d', color: 'white', border: 'none', padding: '5px 10px', cursor: 'pointer', fontSize: '10px', borderRadius: '4px' },
-    mainLayout: { display: 'flex', gap: '30px', maxWidth: '1200px', margin: '0 auto' },
-    cardMP: { background: 'white', borderRadius: '5px', padding: '20px', flex: 1, borderTop: '5px solid #3498db', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' },
-    cardTST: { background: 'white', borderRadius: '5px', padding: '20px', flex: 1, borderTop: '5px solid #e74c3c', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' },
-    title: { borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '20px', color: '#2c3e50' },
-    input: { width: '100%', padding: '10px', marginBottom: '10px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box', background: '#fff', color: '#000' },
-    btnPrimary: { width: '100%', padding: '10px', background: '#3498db', color: 'white', border: 'none', cursor: 'pointer', borderRadius: '4px', fontWeight: 'bold' },
-    btnDanger: { width: '100%', padding: '10px', background: '#e74c3c', color: 'white', border: 'none', cursor: 'pointer', borderRadius: '4px', fontWeight: 'bold' },
-    btnSuccess: { background: '#27ae60', color: 'white', border: 'none', padding: '5px 10px', cursor: 'pointer', marginLeft: '10px', borderRadius: '4px' },
-    projectItem: (isActive) => ({
-        padding: '12px', margin: '8px 0', cursor: 'pointer', borderRadius: '4px',
-        background: isActive ? '#e8f6f3' : '#fff', border: isActive ? '2px solid #1abc9c' : '1px solid #eee', color: '#000'
-    }),
-    bugItem: (status) => ({
-        background: status === 'SOLVED' ? '#f0fff4' : '#fff',
-        borderLeft: status === 'SOLVED' ? '5px solid #27ae60' : '5px solid #e74c3c',
-        padding: '15px', margin: '10px 0', border: '1px solid #eee', borderRadius: '4px',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#000'
-    }),
-    label: { fontWeight: 'bold', display: 'block', marginBottom: '5px', color: '#555', fontSize: '12px' }
+    container: { fontFamily: 'Arial, sans-serif', background: '#f0f2f5', minHeight: '100vh', width: '100%', padding: '20px', color: '#333', boxSizing: 'border-box', position: 'absolute', top: 0, left: 0 },
+    loginBox: { maxWidth: '400px', margin: '100px auto', background: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', textAlign: 'center' },
+    navBar: { background: 'white', padding: '15px', borderRadius: '8px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' },
+    roleBadge: { padding: '5px 10px', borderRadius: '20px', fontWeight: 'bold', fontSize: '12px', color: 'white' },
+    mainLayout: { display: 'flex', gap: '20px' },
+    card: { background: 'white', borderRadius: '8px', padding: '20px', flex: 1, boxShadow: '0 2px 5px rgba(0,0,0,0.05)' },
+    input: { width: '100%', padding: '10px', marginBottom: '10px', border: '1px solid #ddd', borderRadius: '4px', boxSizing: 'border-box' },
+    btnMP: { width: '100%', padding: '12px', background: '#3498db', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', marginBottom: '10px', fontWeight: 'bold' },
+    btnTST: { width: '100%', padding: '12px', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' },
+    btnSuccess: { background: '#27ae60', color: 'white', border: 'none', padding: '5px 10px', cursor: 'pointer', borderRadius: '4px', fontSize: '12px' },
+    btnDelete: { background: '#95a5a6', color: 'white', border: 'none', padding: '5px 10px', cursor: 'pointer', borderRadius: '4px', fontSize: '12px', marginLeft: '10px' },
+    projectItem: (selected) => ({ padding: '10px', borderBottom: '1px solid #eee', cursor: 'pointer', background: selected ? '#e8f6f3' : 'transparent' }),
+    bugItem: (status, severity) => {
+        let borderColor = '#e74c3c';
+        let bgColor = '#fff5f5';
+        let opacity = 1;
+        if (status === 'SOLVED') {
+            borderColor = '#bdc3c7';
+            bgColor = '#f8f9fa';
+            opacity = 0.6;
+        } else if (severity === 'Low') {
+            borderColor = '#f39c12';
+            bgColor = '#fef5e7';
+        }
+        return { background: bgColor, borderLeft: `6px solid ${borderColor}`, padding: '15px', margin: '10px 0', borderRadius: '4px', opacity: opacity, boxShadow: status === 'SOLVED' ? 'none' : '0 2px 4px rgba(0,0,0,0.05)' };
+    }
 };
 
 function App() {
-    // aici tin datele din baza de date
+    const [userRole, setUserRole] = useState(null);
     const [projects, setProjects] = useState([]);
     const [selectedProject, setSelectedProject] = useState(null);
     const [bugs, setBugs] = useState([]);
-
-    // variabile pentru formulare
     const [newProjName, setNewProjName] = useState("");
     const [newProjRepo, setNewProjRepo] = useState("");
-
+    const [newProjTeam, setNewProjTeam] = useState("");
     const [bugDesc, setBugDesc] = useState("");
     const [bugSever, setBugSever] = useState("Low");
+    const [bugPrio, setBugPrio] = useState("Low");
     const [bugCommit, setBugCommit] = useState("");
 
-    // incarc proiectele cand porneste pagina
-    useEffect(() => { fetchProjects(); }, []);
+    useEffect(() => { if (userRole) fetchProjects(); }, [userRole]);
 
     const fetchProjects = async () => {
-        try {
-            const res = await axios.get('http://localhost:8080/api/projects');
-            setProjects(res.data);
-        } catch (err) { console.error(err); }
+        try { const res = await axios.get('http://localhost:8080/api/projects'); setProjects(res.data); }
+        catch (err) { console.error(err); }
     }
 
-    // functia pentru mp sa adauge proiect
     const handleAddProject = async () => {
-        if (!newProjName) return alert("Scrie un nume!");
-        await axios.post('http://localhost:8080/api/projects', { name: newProjName, repoUrl: newProjRepo });
-        fetchProjects();
-        setNewProjName(""); setNewProjRepo("");
-        alert("Proiect creat!");
+        if (!newProjName) return alert("Completeaza numele!");
+        await axios.post('http://localhost:8080/api/projects', { name: newProjName, repoUrl: newProjRepo, team: newProjTeam });
+        fetchProjects(); setNewProjName(""); setNewProjRepo(""); setNewProjTeam("");
     }
 
-    const handleSelectProject = async (proj) => {
-        setSelectedProject(proj);
-        refreshBugs(proj.id);
-    }
+    const handleSelectProject = async (proj) => { setSelectedProject(proj); refreshBugs(proj.id); }
 
-    // reincarc lista de buguri de la server
     const refreshBugs = async (pid) => {
         const res = await axios.get(`http://localhost:8080/api/projects/${pid}/bugs`);
         setBugs(res.data);
     }
 
-    // functia pentru tester sa adauge bug
     const handleAddBug = async () => {
         if (!selectedProject) return;
-        if (!bugDesc) return alert("Scrie o descriere!");
-
-        await axios.post(`http://localhost:8080/api/projects/${selectedProject.id}/bugs`, {
-            description: bugDesc,
-            severity: bugSever,
-            priority: "High",
-            commitLink: bugCommit
-        });
-
-        setBugDesc(""); setBugCommit("");
-        refreshBugs(selectedProject.id);
-        alert("Bug raportat!");
+        await axios.post(`http://localhost:8080/api/projects/${selectedProject.id}/bugs`, { description: bugDesc, severity: bugSever, priority: bugPrio, commitLink: bugCommit });
+        setBugDesc(""); setBugCommit(""); refreshBugs(selectedProject.id);
     }
 
-    // functia pentru mp sa rezolve bugul
     const handleResolveBug = async (bugId) => {
         await axios.put(`http://localhost:8080/api/bugs/${bugId}`);
         refreshBugs(selectedProject.id);
     }
 
-    const initDb = async () => {
-        await axios.get('http://localhost:8080/sync');
-        alert("Baza de date a fost resetata!");
-        setProjects([]); setSelectedProject(null);
+    const handleDeleteBug = async (bugId) => {
+        if (!window.confirm("Stergi acest bug?")) return;
+        try {
+            await axios.delete(`http://localhost:8080/api/bugs/${bugId}`);
+            refreshBugs(selectedProject.id);
+        } catch (err) { alert("Eroare la stergere!"); }
+    }
+
+    const initDb = async () => { await axios.get('http://localhost:8080/sync'); window.location.reload(); }
+
+    if (!userRole) {
+        return (
+            <div style={styles.container}>
+                <button onClick={initDb} style={{ position: 'absolute', top: 10, right: 10 }}>RESET DB</button>
+                <div style={styles.loginBox}>
+                    <h1>BugBuster Login</h1>
+                    <button style={styles.btnMP} onClick={() => setUserRole('MP')}>Intra ca Membru Proiect (MP)</button>
+                    <button style={styles.btnTST} onClick={() => setUserRole('TST')}>Intra ca Tester (TST)</button>
+                </div>
+            </div>
+        )
     }
 
     return (
         <div style={styles.container}>
-            <h1 style={styles.header}>
-                BugBuster <span style={{ fontSize: '12px', color: '#777' }}>(Student: Vasilache Maria-Catalina)</span>
-                <button onClick={initDb} style={{ ...styles.btnInit, marginLeft: '15px' }}>RESET DB</button>
-            </h1>
+            <div style={styles.navBar}>
+                <h3>BugBuster Dashboard</h3>
+                <div>
+                    Autentificat ca: <span style={{ ...styles.roleBadge, background: userRole === 'MP' ? '#3498db' : '#e74c3c', marginLeft: '10px' }}>{userRole}</span>
+                    <button onClick={() => setUserRole(null)} style={{ marginLeft: '20px' }}>Logout</button>
+                </div>
+            </div>
 
             <div style={styles.mainLayout}>
-
-                {/* coloana stanga pentru membru proiect */}
-                <div style={styles.cardMP}>
-                    <h2 style={styles.title}>Membru Proiect (MP)</h2>
-                    <div style={{ background: '#f9f9f9', padding: '15px', marginBottom: '20px', borderRadius: '4px' }}>
-                        <label style={styles.label}>NUME PROIECT:</label>
-                        <input style={styles.input} placeholder="Ex: E-Commerce App" value={newProjName} onChange={e => setNewProjName(e.target.value)} />
-
-                        <label style={styles.label}>REPOSITORY URL:</label>
-                        <input style={styles.input} placeholder="Ex: github.com/user/repo" value={newProjRepo} onChange={e => setNewProjRepo(e.target.value)} />
-
-                        <button style={styles.btnPrimary} onClick={handleAddProject}>+ Inregistreaza Proiect</button>
-                    </div>
-
-                    <div>
-                        <h4 style={{ color: '#3498db' }}>Proiectele Mele:</h4>
-                        {projects.map(p => (
-                            <div key={p.id} onClick={() => handleSelectProject(p)} style={styles.projectItem(selectedProject?.id === p.id)}>
-                                <div style={{ fontWeight: 'bold' }}>{p.name}</div>
-                                <div style={{ fontSize: '11px', color: '#666' }}>Repo: {p.repoUrl}</div>
-                            </div>
-                        ))}
-                    </div>
+                <div style={{ ...styles.card, flex: 1 }}>
+                    <h4>Proiecte</h4>
+                    {userRole === 'MP' && (
+                        <div style={{ background: '#f9f9f9', padding: '10px', marginBottom: '15px' }}>
+                            <input style={styles.input} placeholder="Nume Proiect" value={newProjName} onChange={e => setNewProjName(e.target.value)} />
+                            <input style={styles.input} placeholder="Echipa" value={newProjTeam} onChange={e => setNewProjTeam(e.target.value)} />
+                            <button style={styles.btnMP} onClick={handleAddProject}>+ Proiect Nou</button>
+                        </div>
+                    )}
+                    {projects.map(p => (
+                        <div key={p.id} onClick={() => handleSelectProject(p)} style={styles.projectItem(selectedProject?.id === p.id)}>
+                            <b>{p.name}</b>
+                        </div>
+                    ))}
                 </div>
 
-                {/* coloana dreapta pentru tester */}
-                <div style={styles.cardTST}>
-                    <h2 style={styles.title}>Tester (TST)</h2>
-
-                    {!selectedProject ? <p>Selecteaza un proiect din stanga pentru a incepe.</p> : (
+                <div style={{ ...styles.card, flex: 2 }}>
+                    <h4>{selectedProject ? `Bug-uri: ${selectedProject.name}` : "Selecteaza un proiect"}</h4>
+                    {selectedProject && (
                         <>
-                            <div style={{ background: '#fff0f0', padding: '15px', marginBottom: '20px', borderRadius: '4px' }}>
-                                <h4 style={{ margin: '0 0 10px 0', color: '#c0392b' }}>Raporteaza Bug Nou</h4>
-
-                                <label style={styles.label}>DESCRIERE:</label>
-                                <input style={styles.input} placeholder="Ex: Butonul de login da eroare" value={bugDesc} onChange={e => setBugDesc(e.target.value)} />
-
-                                <label style={styles.label}>LINK COMMIT (Unde a aparut eroarea):</label>
-                                <input style={styles.input} placeholder="Ex: github.com/.../commit/a1b2c3" value={bugCommit} onChange={e => setBugCommit(e.target.value)} />
-
-                                <label style={styles.label}>SEVERITATE:</label>
-                                <select onChange={e => setBugSever(e.target.value)} style={{ ...styles.input, marginBottom: '15px' }}>
-                                    <option value="Low">Mica (Low)</option>
-                                    <option value="High">Mare (High)</option>
-                                    <option value="Critical">Critica</option>
-                                </select>
-
-                                <button style={styles.btnDanger} onClick={handleAddBug}>Raporteaza Bug</button>
-                            </div>
+                            {userRole === 'TST' && (
+                                <div style={{ background: '#fff5f5', padding: '15px', marginBottom: '20px', border: '1px solid #e74c3c' }}>
+                                    <input style={styles.input} placeholder="Descriere" value={bugDesc} onChange={e => setBugDesc(e.target.value)} />
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <select style={styles.input} value={bugSever} onChange={e => setBugSever(e.target.value)}>
+                                            <option value="Low">Severitate: Low</option>
+                                            <option value="Critical">Severitate: Critical</option>
+                                        </select>
+                                        <select style={styles.input} value={bugPrio} onChange={e => setBugPrio(e.target.value)}>
+                                            <option value="Low">Prioritate: Low</option>
+                                            <option value="High">Prioritate: High</option>
+                                        </select>
+                                    </div>
+                                    <button style={styles.btnTST} onClick={handleAddBug}>Raporteaza Bug</button>
+                                </div>
+                            )}
 
                             <div>
-                                <h4>Lista Bug-uri:</h4>
-                                {bugs.map(b => (
-                                    <div key={b.id} style={styles.bugItem(b.status)}>
-                                        <div>
-                                            <div style={{ fontWeight: 'bold', fontSize: '14px' }}>
-                                                [{b.severity}] {b.description}
-                                            </div>
-                                            <div style={{ fontSize: '11px', color: '#555' }}>Commit: {b.commitLink || "N/A"}</div>
-                                            {b.status === 'SOLVED' && <div style={{ color: 'green', fontWeight: 'bold', fontSize: '12px' }}>REZOLVAT</div>}
+                                {[...bugs].sort((a, b) => {
+                                    if (a.status === 'SOLVED' && b.status !== 'SOLVED') return 1;
+                                    if (a.status !== 'SOLVED' && b.status === 'SOLVED') return -1;
+                                    return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+                                }).map(b => (
+                                    <div key={b.id} style={styles.bugItem(b.status, b.severity)}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <b style={{ textDecoration: b.status === 'SOLVED' ? 'line-through' : 'none' }}>{b.description}</b>
+                                            <span style={{ fontWeight: 'bold', color: b.status === 'SOLVED' ? '#95a5a6' : (b.priority === 'High' ? 'red' : '#f39c12') }}>Prio: {b.priority}</span>
                                         </div>
-
-                                        {b.status !== 'SOLVED' && (
-                                            <button style={styles.btnSuccess} onClick={() => handleResolveBug(b.id)}>Rezolva (MP)</button>
-                                        )}
+                                        <div style={{ fontSize: '12px' }}>Sev: {b.severity} | Stat: {b.status}</div>
+                                        <div style={{ marginTop: '10px' }}>
+                                            {b.status !== 'SOLVED' && userRole === 'MP' && (
+                                                <button style={styles.btnSuccess} onClick={() => handleResolveBug(b.id)}>Rezolva</button>
+                                            )}
+                                            {userRole === 'TST' && (
+                                                <button style={styles.btnDelete} onClick={() => handleDeleteBug(b.id)}>Sterge</button>
+                                            )}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         </>
                     )}
                 </div>
-
             </div>
         </div>
     )
