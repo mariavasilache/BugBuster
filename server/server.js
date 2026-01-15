@@ -13,12 +13,14 @@ const sequelize = new Sequelize({
 
 const Project = sequelize.define('project', {
     name: Sequelize.STRING,
-    repoUrl: Sequelize.STRING
+    repoUrl: Sequelize.STRING,
+    team: Sequelize.STRING
 });
 
 const Bug = sequelize.define('bug', {
     description: Sequelize.STRING,
     severity: Sequelize.STRING,
+    priority: Sequelize.STRING,
     priority: Sequelize.STRING,
     commitLink: Sequelize.STRING,
     status: { type: Sequelize.STRING, defaultValue: 'OPEN' }
@@ -72,6 +74,13 @@ console.log("AM PRIMIT CERERE DE REZOLVARE PENTRU BUG: " + req.params.bugId);
             res.status(404).json({ message: 'Bug not found' });
         }
     } catch (e) { res.status(500).json({ error: e.message }) }
+});
+
+app.delete('/api/bugs/:id', async (req, res) => {
+    try {
+        await Bug.destroy({ where: { id: req.params.id } });
+        res.status(200).send("Sters");
+    } catch (err) { res.status(500).send(err); }
 });
 
 app.listen(8080, () => console.log('Server running on port 8080'));
